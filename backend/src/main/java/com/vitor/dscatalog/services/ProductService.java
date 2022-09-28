@@ -11,8 +11,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.vitor.dscatalog.dto.CategoryDTO;
 import com.vitor.dscatalog.dto.ProductDTO;
+import com.vitor.dscatalog.entities.Category;
 import com.vitor.dscatalog.entities.Product;
+import com.vitor.dscatalog.repositories.CategoryRepository;
 import com.vitor.dscatalog.repositories.ProductRepository;
 import com.vitor.dscatalog.services.exception.DatabaseException;
 import com.vitor.dscatalog.services.exception.ResourceNotFoundException;
@@ -22,6 +25,9 @@ public class ProductService {
 	
 	@Autowired
 	private ProductRepository repository;
+	
+	@Autowired
+	private CategoryRepository categoryRepository;
 	
 	@Transactional(readOnly = true)
 	public Page<ProductDTO> findAllPaged(PageRequest pageRequest) {
@@ -40,7 +46,7 @@ public class ProductService {
 	@Transactional
 	public ProductDTO insert(ProductDTO dto) {
 		Product entity = new Product();
-		entity.setName(dto.getName());
+		copyDtoToEntity(dto,entity);
 		repository.save(entity);
 		return new ProductDTO(entity);
 	}
@@ -49,12 +55,27 @@ public class ProductService {
 	public ProductDTO update(Long id, ProductDTO dto) {
 		try {
 			Product entity = repository.getReferenceById(id);
-			entity.setName(dto.getName());
+			copyDtoToEntity(dto,entity);
 			entity = repository.save(entity);
 			return new ProductDTO(entity);
 		}catch(EntityNotFoundException e) {
 			throw new ResourceNotFoundException("id nao encontrado " + id);
 		}
+	}
+
+	private void copyDtoToEntity(ProductDTO dto, Product entity) {
+		entity.setName(dto.getName());
+		entity.setDescription(dto.getDescription());
+		entity.setDate(dto.getDate());
+		entity.setPrice(dto.getPrice());
+		entity.setImgUrl(dto.getImgUrl());
+		
+		entity.getCategories().clear();
+		for(CategoryDTO catDto: dto.getCategories()) {
+			Category category = categoryRepository.getReferenceById(catDto.getId());
+			entity.getCategories().add(category);
+		}
+		
 	}
 
 	public void delete(Long id) {
